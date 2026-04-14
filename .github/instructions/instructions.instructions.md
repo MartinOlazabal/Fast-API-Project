@@ -1,0 +1,21 @@
+---
+description: Describe when these instructions should be loaded
+# applyTo: 'Describe when these instructions should be loaded' # when provided, instructions will automatically be added to the request context when the pattern matches an attached file
+---
+- Utilizar por defecto python
+- Utiliza el framework FastAPI para el desarrollo de la API REST
+- Utiliza SQLAlchemy para la gestión de la base de datos
+- Refactoriza el código para mejorar la legibilidad y mantenibilidad siempre que sea posible
+- Asegúrate de seguir las mejores prácticas de desarrollo de software
+- Escribe pruebas unitarias para el código que desarrolles
+- Documenta el código utilizando docstrings y comentarios claros
+- Utiliza un sistema de control de versiones (como Git) para gestionar el código fuente
+- Considera que soy novato en programación, así que por favor explica los conceptos de manera clara y sencilla
+- Si es necesario, proporciona ejemplos de código para ilustrar los conceptos que estás explicando
+- Si tienes alguna pregunta o necesitas más información para completar la tarea, no dudes en preguntar
+- En temas de base de datos necesito mejorar mis habilidades, así que por favor proporciona explicaciones detalladas sobre cómo diseñar y gestionar bases de datos utilizando SQLAlchemy
+- Si es necesario, proporciona ejemplos de código para ilustrar cómo utilizar SQLAlchemy para interactuar con la base de datos
+- Asegúrate de que el código que desarrolles sea seguro y siga las mejores prácticas de seguridad en el desarrollo de software
+- Si es necesario, proporciona explicaciones detalladas sobre cómo implementar medidas de seguridad en el código que desarrolles
+- Recuerda que estoy aprendiendo, así que por favor ten paciencia y proporciona explicaciones claras y detalladas para ayudarme a entender los conceptos y mejorar mis habilidades de programación
+- Cuando me hagas una correcion al codigo, explicame lo que agregaste y por que lo agregaste, para que pueda aprender de la corrección y mejorar mis habilidades de programación
