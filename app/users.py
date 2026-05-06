@@ -8,19 +8,23 @@ from typing import Optional
 from fastapi import Depends, Request
 # Clases principales de fastapi-users para gestionar usuarios con IDs UUID
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin
-from fastapi_users.authentication import (AuthenticationBackend, 
-                                          BearerTransport, JWTStrategy) # Para autenticación con JWT
-from fastapi_users.db import SQLAlchemyUserDatabase  # Para integrar con SQLAlchemy
-from app.db import User, get_user_db  # Modelo de usuario y función para obtener la base de datos de usuarios
+from fastapi_users.authentication import (  # Para autenticación con JWT
+    AuthenticationBackend, BearerTransport, JWTStrategy)
+from fastapi_users.db import \
+    SQLAlchemyUserDatabase  # Para integrar con SQLAlchemy
 
+from app.db import (  # Modelo de usuario y función para obtener la base de datos de usuarios
+    User, get_user_db)
 
-SECRET = "SECRET_KEY"  # Clave secreta para firmar los tokens JWT (en producción, usar una más segura y almacenarla de forma segura)
+SECRET = "3awCMXkJQw0fzMQ0jUHyloudNBGk40WOAmvpZz8nEld"  
+
+# Clave secreta para firmar los tokens JWT (en producción, usar una más segura y almacenarla de forma segura)
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]): 
    reset_password_token_secret = SECRET  # Clave para generar tokens de restablecimiento de contraseña
    verification_token_secret = SECRET  # Clave para generar tokens de verificación de email
-
+   
 
 async def on_after_register(user: User, request: Optional[Request] = None):
     """Función que se ejecuta después de que un usuario se registra exitosamente."""

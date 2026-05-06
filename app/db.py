@@ -1,20 +1,21 @@
-from collections.abc import AsyncGenerator
 import uuid
-
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
+from collections.abc import AsyncGenerator
 from datetime import datetime
-from fastapi_users.db import SQLAlchemyBaseUserTable, SQLAlchemyUserDatabase
+
 from fastapi import Depends
+from fastapi_users.db import (SQLAlchemyBaseUserTableUUID,
+                              SQLAlchemyUserDatabase)
+from sqlalchemy import Column, DateTime, ForeignKey, String, Text, Uuid
+from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
+                                    create_async_engine)
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
 
 DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
 class Base(DeclarativeBase):
     pass
 
-class User(SQLAlchemyBaseUserTable, Base):
+class User(SQLAlchemyBaseUserTableUUID, Base):
     posts = relationship("Post", back_populates="user")
     
 
@@ -23,8 +24,8 @@ class User(SQLAlchemyBaseUserTable, Base):
 class Post(Base):
     __tablename__ = "posts"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nulable=False)
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id = Column(Uuid, ForeignKey("user.id"), nullable=False)
     user = relationship("User", back_populates="posts") 
     
     title = Column(String)
@@ -47,4 +48,4 @@ async def get_async_session()-> AsyncGenerator[AsyncSession, None]:
         yield session
 
 async def get_user_db(session: AsyncSession = Depends(get_async_session)) -> SQLAlchemyUserDatabase:
-    yield SQLAlchemyUserDatabase(User, session)
+    yield SQLAlchemyUserDatabase(session, User)

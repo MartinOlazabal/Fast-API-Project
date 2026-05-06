@@ -3,20 +3,21 @@
 # ============================================================================
 import os  # Para operaciones del sistema operativo
 import shutil  # Para copiar archivos
-import tempfile  # Para crear archivos temporales
-import uuid  # Para manejar identificadores únicos (UUID)
 import tempfile  # Para crear archivos temporales de forma segura
-from users import auth_backend, current_active_users, fastapi_users  # Importar autenticación y gestión de usuarios
-
+import uuid  # Para manejar identificadores únicos (UUID)
 from contextlib import asynccontextmanager  # Para manager async de contexto
+
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from sqlalchemy import select  # Para queries SQL
 from sqlalchemy.ext.asyncio import AsyncSession  # Para sesiones async con BD
 
-from app.db import (Post, create_db_and_tables,  # Modelos y funciones BD
+from app.db import (Post, User, create_db_and_tables,  # Modelos y funciones BD
                     get_async_session)
 from app.images import imagekit  # Cliente de ImageKit
-from app.schemas import PostCreate, PostResponse  # Esquemas Pydantic
+from app.schemas import (  # Esquemas Pydantic; Esquemas de usuario para FastAPI Users
+    PostCreate, PostResponse, UserCreate, UserRead, UserUpdate)
+from app.users import (  # Importar autenticación y gestión de usuarios
+    auth_backend, current_active_users, fastapi_users)    
 
 
 # Decorador que convierte esta función en un gestor de contexto asincrónico
@@ -32,6 +33,15 @@ async def lifespan(app: FastAPI):
 
 # Crear la instancia de FastAPI y pasarle el gestor de ciclo de vida
 app = FastAPI(lifespan=lifespan)
+
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"]
+)
+
+app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"])
+app.include_router(fastapi_users.get_reset_password_router(), prefix="/auth", tags=["auth"])
+app.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"])
+app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
 
 
 
@@ -85,7 +95,8 @@ def post_to_dict(post: Post) -> dict:
 @app.post("/upload")
 async def upload(
     file: UploadFile = File(...),                      # Archivo requerido
-    caption: str = Form(""),          
+    caption: str = Form(""),     
+    user=Depends(current_active_users),  # Usuario autenticado (opcional)     
     session: AsyncSession = Depends(get_async_session)  # Sesión BD inyectada
 ):
     """Carga un archivo (imagen o video) a ImageKit y lo guarda en la base de datos"""
@@ -156,6 +167,7 @@ def cleanup_temp_file(temp_file_path: str) -> None:
 @app.get("/feed")
 async def get_feed(
     session: AsyncSession = Depends(get_async_session)  # Sesión BD inyectada
+    user=Depends(current_active_users)  # Usuario autenticado (opcional)
 ):
     """Obtiene el feed de posts ordenados por fecha de creación (más recientes primero)"""
     # Ejecutar query: SELECT * FROM posts ORDER BY created_at DESC (más recientes primero)
@@ -163,14 +175,33 @@ async def get_feed(
     # Extraer los objetos Post de los resultados (result.all() retorna tuplas)
     posts = [row[0] for row in result.all()]
     
+    result = await session.execute(select(User))
+    users = [row[0] for row in result.all()]
+    user_Dict = {u.id: u.email for u in users}
+    
     # Convertir cada Post a diccionario para poder serializar a JSON
-    posts_data = [post_to_dict(post) for post in posts]
+    posts_data = []
+    for post in posts:
+        posts_data.append(
+            {
+                "id": str(post.id),                    # Convertir ID a string
+                "caption": post.caption, 
+                "user_id": str(post.user_id),
+                "user_name":# Descripción del post
+                "url": post.url,                       # URL de la imagen/video
+                "file_type": post.file_type,           # Tipo: 'image' o 'video
+                "file_name": post.file_name,           # Nombre del archivo
+                "created_at": post.created_at.isoformat(),
+                "is_own": post.user_id == user.id,
+                "email": user_dict.get(post.user_id, "Unknown"))  # Indica si el post pertenece al usuario autenticado
+            }
+        )
     # Retornar los posts en formato JSON con clave 'posts'
     return {"posts": posts_data}
    
     
 @app.delete("/posts/{post_id}") 
-async def delete_post(post_id: str, session: AsyncSession = Depends(get_async_session)):
+async def delete_post(post_id: str, session: AsyncSession = Depends(get_async_session), user=Depends(current_active_users)):
     try:
         post_uuid = uuid.UUID(post_id)  # Convertir el ID de string a UUID
         result = await session.execute(select(Post).where(Post.id == post_uuid))
@@ -178,6 +209,8 @@ async def delete_post(post_id: str, session: AsyncSession = Depends(get_async_se
         
         if not post:
             raise HTTPException(status_code=404, detail="Post no encontrado")
+        if post.user_id != user.id:
+            raise
         
         await session.delete(post)  # Eliminar el Post de la sesión
         await session.commit()  # Confirmar la eliminación en la base de datos
@@ -186,4 +219,5 @@ async def delete_post(post_id: str, session: AsyncSession = Depends(get_async_se
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+
 
